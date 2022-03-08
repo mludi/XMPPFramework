@@ -25,7 +25,7 @@
 @implementation XMPPIQ(JabberRPCResonse)
 
 -(NSXMLElement *)methodResponseElement {
-	NSXMLElement *query = [self elementForName:@"query"];
+    NSXMLElement *query = [self elementForName:@"query" xmlns:@"jabber:iq:rpc"];
 	return [query elementForName:@"methodResponse"];
 }
 
