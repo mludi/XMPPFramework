@@ -271,6 +271,8 @@ NSString *const XMPPJabberRPCErrorDomain = @"XMPPJabberRPCErrorDomain";
 			
 			if ([iq isResultIQ])
 			{
+                [multicastDelegate jabberRPC:self elementID:elementID didReceiveRawMethodResponse:iq];
+
 				id response;
 				NSError *error = nil;
 				

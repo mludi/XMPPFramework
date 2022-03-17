@@ -45,6 +45,8 @@ extern NSString *const XMPPJabberRPCErrorDomain;
 // sent when a methodResponse comes back
 -(void)jabberRPC:(XMPPJabberRPCModule *)sender elementID:(NSString *)elementID didReceiveMethodResponse:(id)response;
 
+- (void)jabberRPC:(XMPPJabberRPCModule *)sender elementID:(NSString *)elementID didReceiveRawMethodResponse:(XMPPIQ *)iq;
+
 // sent when a Jabber-RPC server request is received
 -(void)jabberRPC:(XMPPJabberRPCModule *)sender didReceiveSetIQ:(XMPPIQ *)iq;
 @end
