@@ -129,7 +129,7 @@
 	for (id object in array) {
 		[data addChild:[self valueElementFromObject:object]];
 	}
-	return [self wrapValueElementAroundElement:data];
+    return [self wrapValueElementAroundElement:[self wrapElement:@"array" aroundElement:data]];
 }
 
 
