@@ -71,4 +71,7 @@
  
 */
 
+- (void)willInsertMessage:(XMPPMessageArchiving_Message_CoreDataObject *)message;
+- (void)didUpdateMessage:(XMPPMessageArchiving_Message_CoreDataObject *)message;
+
 @end
