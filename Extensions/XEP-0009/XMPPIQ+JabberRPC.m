@@ -9,6 +9,7 @@
 #import "XMPPIQ+JabberRPC.h"
 #import "XMPP.h"
 #import "NSData+XMPP.h"
+#import "XMPPIQ+JabberRPCTimeZoneSupport.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
@@ -177,13 +178,20 @@
 
 
 +(NSXMLElement *)valueElementFromDate:(NSDate *)date {
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+
+    NSTimeZone *timeZone = [XMPPIQ timeZoneForJabberRPC];
+    if (timeZone) {
+        calendar.timeZone = timeZone;
+    }
+
 	unsigned calendarComponents =	kCFCalendarUnitYear | 
 	kCFCalendarUnitMonth | 
 	kCFCalendarUnitDay | 
 	kCFCalendarUnitHour | 
 	kCFCalendarUnitMinute | 
 	kCFCalendarUnitSecond;
-    NSDateComponents *dateComponents = [[NSCalendar currentCalendar] components:calendarComponents fromDate:date];
+    NSDateComponents *dateComponents = [calendar components:calendarComponents fromDate:date];
     NSString *dateString = [NSString stringWithFormat: @"%.4ld%.2ld%.2ldT%.2ld:%.2ld:%.2ld", 
 							(long)[dateComponents year],
 							(long)[dateComponents month],

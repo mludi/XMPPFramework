@@ -65,6 +65,8 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
 
 @implementation XMPPIncomingFileTransfer
 
+@synthesize senderJID=_senderJID;
+@synthesize incomingFileName=_receivedFileName;
 
 #pragma mark - Lifecycle
 
@@ -92,7 +94,7 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
     dispatch_source_cancel(_ibbTimer);
 #if !OS_OBJECT_USE_OBJC
   dispatch_release(_ibbTimer);
-  #endif
+#endif
   _ibbTimer = NULL;
 
   if (_asyncSocket.delegate == self) {
@@ -120,6 +122,11 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
   }
 }
 
+- (void)rejectSIOffer:(XMPPIQ *)offer
+{
+  XMPPLogTrace();
+  [self sendSIOfferRejection:offer];
+}
 
 #pragma mark - Private Methods
 
@@ -215,7 +222,7 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
         self.sid = [inSi attributeStringValueForName:@"id"];
 
         // Store the size of the incoming data for later use
-        NSXMLElement *inFile = [inSi elementForName:@"file"];
+        NSXMLElement *inFile = [inSi elementForName:@"file" xmlns:XMPPSIProfileFileTransferNamespace];
         self->_totalDataSize = [inFile attributeUnsignedIntegerValueForName:@"size"];
 
         // Store the name of the file for later use
@@ -265,6 +272,34 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
     dispatch_async(moduleQueue, block);
 }
 
+- (void)sendSIOfferRejection:(XMPPIQ *)offer
+{
+  XMPPLogTrace();
+
+  dispatch_block_t block = ^{
+    @autoreleasepool {
+      XMPPIQ *errorIq = [XMPPIQ iqWithType:@"error" to:offer.from elementID:offer.elementID];
+
+      NSXMLElement *errorElem = [NSXMLElement elementWithName:@"error"];
+      [errorElem addAttributeWithName:@"type" stringValue:@"cancel"];
+      [errorElem addAttributeWithName:@"code" intValue:403];
+
+      NSXMLElement *forbidden = [NSXMLElement elementWithName:@"forbidden"
+                                                        xmlns:@"urn:ietf:params:xml:ns:xmpp-stanzas"];
+      [errorElem addChild:forbidden];
+      [errorIq addChild:errorElem];
+
+      [xmppStream sendElement:errorIq];
+
+      [self cleanUp];
+    }
+  };
+
+  if (dispatch_get_specific(moduleQueueTag))
+    block();
+  else
+    dispatch_async(moduleQueue, block);
+}
 
 #pragma mark - IBB Methods
 
@@ -322,13 +357,13 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
         XMPPLogVerbose(@"Downloaded %lu/%lu bytes in IBB transfer.",
                        (unsigned long) self->_receivedDataSize, (unsigned long) self->_totalDataSize);
 
-        if (self->_receivedDataSize < self->_totalDataSize) {
-          // Send ack response
-          XMPPIQ *iq = [XMPPIQ iqWithType:@"result"
-                                       to:received.from
-                                elementID:received.elementID];
-          [self->xmppStream sendElement:iq];
-        } else {
+        // Send ack response
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"result"
+                                     to:received.from
+                              elementID:received.elementID];
+        [self->xmppStream sendElement:iq];
+
+        if (_receivedDataSize >= _totalDataSize) {
           // We're finished!
           XMPPLogInfo(@"Finished downloading IBB data.");
           [self transferSuccess];
@@ -341,7 +376,6 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
   else
     dispatch_async(moduleQueue, block);
 }
-
 
 #pragma mark - Util Methods
 
@@ -403,13 +437,16 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
 * This method determines whether or not the IQ stanza is an IBB data stanza
 * (XEP-0047 Example 6).
 */
-- (BOOL)isIBBDataIQ:(XMPPIQ *)iq
+- (BOOL)isIBBDataIQWithMySID:(XMPPIQ *)iq
 {
   if (!iq) return NO;
   if (![iq.type isEqualToString:@"set"]) return NO;
 
   NSXMLElement *data = iq.childElement;
-  return !(!data || ![data.xmlns isEqualToString:XMPPIBBNamespace]);
+  if (!data || ![data.xmlns isEqualToString:XMPPIBBNamespace]) return NO;
+
+  NSString *sid = [data attributeStringValueForName:@"sid"];
+  return [sid isEqualToString:self.sid];
 }
 
 /**
@@ -511,7 +548,6 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
 
   _streamMethods &= 0;
   _transferState = XMPPIFTStateNone;
-  _senderJID = nil;
   _streamhostsQueryId = nil;
   _streamhostUsed = nil;
   _receivedData = nil;
@@ -602,7 +638,7 @@ NSString *const XMPPIncomingFileTransferErrorDomain = @"XMPPIncomingFileTransfer
     return YES;
   }
 
-  if (_transferState == XMPPIFTStateWaitingForIBBData && [self isIBBDataIQ:iq]) {
+  if (_transferState == XMPPIFTStateWaitingForIBBData && [self isIBBDataIQWithMySID:iq]) {
     [self processReceivedIBBDataIQ:iq];
   }
 

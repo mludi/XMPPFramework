@@ -10,6 +10,7 @@
 #import "XMPPLogging.h"
 #import "NSData+XMPP.h"
 #import "NSXMLElement+XMPP.h"
+#import "XMPPIQ+JabberRPCTimeZoneSupport.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
@@ -238,7 +239,12 @@
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
     [dateFormatter setLocale:[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"]];
     [dateFormatter setDateFormat: format];
-    
+
+    NSTimeZone *timeZone = [XMPPIQ timeZoneForJabberRPC];
+    if (timeZone) {
+        dateFormatter.timeZone = timeZone;
+    }
+
     NSDate *result = [dateFormatter dateFromString: dateString];
     
     return result;

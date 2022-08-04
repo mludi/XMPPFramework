@@ -215,6 +215,48 @@ static XMPPMessageArchivingCoreDataStorage *sharedInstance;
     return NO;
 }
 
+- (BOOL)messageExistsWithJid:(XMPPJID *)messageJid
+                   streamJid:(XMPPJID *)streamJid
+                   messageID:(NSString *)messageID
+                        body:(NSString *)body
+        managedObjectContext:(NSManagedObjectContext *)moc
+{
+    BOOL result = NO;
+
+    NSEntityDescription *messageEntity = [self messageEntity:moc];
+
+    NSString *predicateFrmt = @"bareJidStr == %@ AND streamBareJidStr == %@ AND body == %@";
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFrmt,
+                              [messageJid bare],
+                              [streamJid bare],
+                              body];
+
+    NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+    fetchRequest.entity = messageEntity;
+    fetchRequest.predicate = predicate;
+
+    NSError *error = nil;
+    NSArray *results = [moc executeFetchRequest:fetchRequest error:&error];
+
+    if (results == nil || error)
+    {
+        XMPPLogError(@"%@: %@ - Error executing fetchRequest: %@", THIS_FILE, THIS_METHOD, fetchRequest);
+    }
+    else
+    {
+        for (XMPPMessageArchiving_Message_CoreDataObject *message in results)
+        {
+            if ([message.message.elementID isEqualToString:messageID])
+            {
+                result = YES;
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Public API
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -422,6 +464,20 @@ static XMPPMessageArchivingCoreDataStorage *sharedInstance;
 		XMPPJID *myJid = [self myJIDForXMPPStream:xmppStream];
 		
 		XMPPJID *messageJid = isOutgoing ? [message to] : [message from];
+
+        // Check if message is already archived
+
+        NSString *messageID = message.elementID;
+
+        if (messageID && messageID.length > 0
+            && [self messageExistsWithJid:messageJid
+                                streamJid:myJid
+                                messageID:messageID
+                                     body:messageBody
+                     managedObjectContext:moc])
+        {
+            return;
+        }
 		
 		// Fetch-n-Update OR Insert new message
 		

@@ -11,6 +11,16 @@
 @interface XMPPIncomingFileTransfer : XMPPFileTransfer
 
 /**
+ * The sender of the file transfer.
+ */
+@property (readonly) XMPPJID *senderJID;
+
+/**
+ * The name of the file you're receiving.
+ */
+@property (readonly) NSString *incomingFileName;
+
+/**
 * (Optional)
 *
 * Specifies whether or not file transfers should automatically be accepted. If
@@ -33,6 +43,15 @@
 *              the delegate to you).
 */
 - (void)acceptSIOffer:(XMPPIQ *)offer;
+
+/**
+ * Sends a response to the file transfer initiator rejecting the Stream
+ * Initiation offer.
+ *
+ * @param offer IQ stanza representing the SI offer (this should be provided by
+ *              the delegate to you).
+ */
+- (void)rejectSIOffer:(XMPPIQ *)offer;
 
 @end
 

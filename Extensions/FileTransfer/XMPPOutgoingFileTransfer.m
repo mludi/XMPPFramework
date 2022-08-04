@@ -1045,7 +1045,7 @@ NSString *const XMPPOutgoingFileTransferErrorDomain = @"XMPPOutgoingFileTransfer
           return_from_block;
         }
 
-        NSXMLElement *query = [iq elementForName:@"query"];
+        NSXMLElement *query = [iq elementForName:@"query" xmlns:XMPPDiscoInfoNamespace];
 
         // We're checking to see if the recipient has the features we need
         BOOL hasSI = NO;
@@ -1065,7 +1065,7 @@ NSString *const XMPPOutgoingFileTransferErrorDomain = @"XMPPOutgoingFileTransfer
         hasSOCKS5 = hasSI && hasFT && hasSOCKS5;
         hasIBB = hasSI && hasFT && hasIBB;
 
-        if (!hasSOCKS5 || !hasIBB) {
+        if (!hasSOCKS5 && !hasIBB) {
           NSString *errMsg =
               @"Unable to send SI offer; the recipient doesn't have the required features.";
           XMPPLogInfo(@"%@: %@", THIS_FILE, errMsg);
